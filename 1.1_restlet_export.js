@@ -9,7 +9,7 @@ define(['N/search', 'N/task', 'N/cache'], (search, task, cache) => {
         deploymentId: 'customdeploy_scsearchexport_ss'
     };
 
-    const DEFAULT_FOLDER_ID = 211737;
+    // const DEFAULT_FOLDER_ID = 211737;
 
     const CACHE_NAME = 'CSV_EXPORT_STATUS';
     const CACHE_TTL_SECONDS = 60 * 60 * 24;
@@ -40,7 +40,7 @@ define(['N/search', 'N/task', 'N/cache'], (search, task, cache) => {
             }
 
             const folderId =
-                parseInt(request.folderId || DEFAULT_FOLDER_ID, 10);
+                parseInt(request.folderId );  // || DEFAULT_FOLDER_ID, 10
 
             log.audit({
                 title: 'Export Trigger Received',

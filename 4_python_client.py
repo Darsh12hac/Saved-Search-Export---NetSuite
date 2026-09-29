@@ -21,6 +21,8 @@ TOKEN_ID = os.environ["NS_TOKEN_ID"]
 TOKEN_SECRET = os.environ["NS_TOKEN_SECRET"]
 
 DEFAULT_SEARCH_ID = os.environ["NS_SEARCH_ID"]
+DEFAULT_FOLDER_ID = int(os.environ["NS_FOLDER_ID"])
+
 
 BASE_RESTLET_DOMAIN = "https://6403579-sb1.restlets.api.netsuite.com"
 BASE_APP_DOMAIN = "https://6403579-sb1.app.netsuite.com"
@@ -32,7 +34,7 @@ TRIGGER_RESTLET_URL = f"{BASE_RESTLET_DOMAIN}/app/site/hosting/restlet.nl?script
 STATUS_RESTLET_URL = f"{BASE_RESTLET_DOMAIN}/app/site/hosting/restlet.nl?script=1647&deploy=1"
 DOWNLOAD_RESTLET_URL = f"{BASE_RESTLET_DOMAIN}/app/site/hosting/restlet.nl?script=1648&deploy=1"
 
-DOWNLOAD_LINE_COUNT = 50000  # lines per chunk
+DOWNLOAD_LINE_COUNT = 100000  # lines per chunk
 
 POLL_INTERVAL_SECONDS = 15
 MAX_WAIT_SECONDS = 60*60*3
@@ -49,11 +51,12 @@ auth = OAuth1(
 )
 
 
-def trigger_export(search_id, folder_id=None, force=False):
+def trigger_export(search_id, folder_id, force=False):
 
     params = {"searchId": search_id}
-    if folder_id:
-        params["folderId"] = folder_id
+    # if folder_id:
+    #     params["folderId"] = folder_id
+    params["folderId"] = DEFAULT_FOLDER_ID
     if force:
         params["force"] = "true"
 
@@ -61,6 +64,9 @@ def trigger_export(search_id, folder_id=None, force=False):
     print("TRIGGERING EXPORT")
     print("=" * 60)
     print("Search ID:", search_id)
+    print("=" * 60)
+    print("Folder ID:", DEFAULT_FOLDER_ID)
+
     if force:
         print("(force=true - bypassing any in-progress job check)")
 
