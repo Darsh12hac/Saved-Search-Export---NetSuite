@@ -2,20 +2,14 @@
  * @NApiVersion 2.1
  * @NScriptType Restlet
  */
-define(['N/search', 'N/task', 'N/cache'], (search, task, cache) => {
+define(['N/search', 'N/task', 'N/cache','./Constant'], (search, task, cache,Constant) => {
 
-    const SC_CONFIG = {
-        scriptId: 'customscript_sc_searchexport_ss',
-        deploymentId: 'customdeploy_scsearchexport_ss'
-    };
 
-    // const DEFAULT_FOLDER_ID = 211737;
-
-    const CACHE_NAME = 'CSV_EXPORT_STATUS';
-    const CACHE_TTL_SECONDS = 60 * 60 * 24;
+    const CACHE_NAME = CACHE_DETAIL.CACHE_NAME;
+    const CACHE_TTL_SECONDS =CACHE_DETAIL.CACHE_TTL_SECONDS;
 
     // Tracks the active jobId per searchId, so repeat triggers reuse it
-    const ACTIVE_JOB_CACHE_NAME = 'CSV_EXPORT_ACTIVE_JOB';
+    const ACTIVE_JOB_CACHE_NAME = CACHE_DETAIL.ACTIVE_JOB_CACHE_NAME;
 
     const get = (request) => {
         return triggerExport(request || {});
@@ -27,15 +21,20 @@ define(['N/search', 'N/task', 'N/cache'], (search, task, cache) => {
 
     const triggerExport = (request) => {
 
-        try {
+            const scriptId = request.scriptId;
+            const deploymentId = request.deploymentId;
 
+
+        try {
+            
+           
             const searchId = request.searchId;
 
             if (!searchId) {
                 return JSON.stringify({
                     success: false,
-                    error: 'MISSING_PARAM',
-                    message: 'searchId is required'
+                    error: ERROR_CODES.MISSING_PARAM,
+                    message: RETURN_MESSAGE.MISSING_PARAM_MSSG_1
                 });
             }
 
@@ -43,8 +42,8 @@ define(['N/search', 'N/task', 'N/cache'], (search, task, cache) => {
                 parseInt(request.folderId );  // || DEFAULT_FOLDER_ID, 10
 
             log.audit({
-                title: 'Export Trigger Received',
-                details: { searchId: searchId, folderId: folderId }
+                title: LOG_TITLE.EXPORT_TITLE_1,
+                details: { searchId: searchId, folderId: folderId , scriptId : scriptId, deploymentId: deploymentId }
             });
 
             // Check for an already-running job for this searchId
@@ -87,7 +86,7 @@ define(['N/search', 'N/task', 'N/cache'], (search, task, cache) => {
                     : null;
 
                 // Ignore jobs stuck for too long (likely failed at the platform level)
-                const STALE_MINUTES = 30;
+                const STALE_MINUTES = TIMEINGS.STALE_MINUTES;
                 let isStale = false;
 
                 if (existingStatus) {
@@ -103,14 +102,14 @@ define(['N/search', 'N/task', 'N/cache'], (search, task, cache) => {
 
                 const stillRunning =
                     existingStatus &&
-                    existingStatus.status !== 'COMPLETE' &&
-                    existingStatus.status !== 'FAILED' &&
+                    existingStatus.status !== STATUS.COMPLETE &&
+                    existingStatus.status !== STATUS.FAILED &&
                     !isStale;
 
                 if (stillRunning) {
 
                     log.audit({
-                        title: 'Export Already In Progress',
+                        title:LOG_TITLE.EXPORT_TITLE_2,
                         details: { searchId: searchId, jobId: existingJobId }
                     });
 
@@ -120,11 +119,7 @@ define(['N/search', 'N/task', 'N/cache'], (search, task, cache) => {
                         jobId: existingJobId,
                         searchId: searchId,
                         status: existingStatus.status,
-                        message:
-                            'An export for this search is already running. ' +
-                            'Poll the status RESTlet with this jobId instead ' +
-                            'of triggering a new one. If you believe this is ' +
-                            'stuck, pass force=true to start a fresh job.'
+                        message:RETURN_MESSAGE.MESSAGE_1
                     });
                 }
             }
@@ -156,7 +151,7 @@ define(['N/search', 'N/task', 'N/cache'], (search, task, cache) => {
             statusCache.put({
                 key: jobId,
                 value: JSON.stringify({
-                    status: 'PENDING',
+                    status: STATUS.PENDING,
                     searchId: searchId,
                     createdAt: new Date().toISOString()
                 }),
@@ -170,15 +165,16 @@ define(['N/search', 'N/task', 'N/cache'], (search, task, cache) => {
                 ttl: CACHE_TTL_SECONDS
             });
 
-            // Submit the Map/Reduce task
+            // Submit the Script task
             let taskId;
 
             try {
 
                 const scTask = task.create({
                     taskType: task.TaskType.SCHEDULED_SCRIPT,
-                    scriptId: SC_CONFIG.scriptId,
-                    deploymentId: SC_CONFIG.deploymentId,
+                    scriptId: scriptId,
+                    deploymentId: deploymentId,
+                  
                     params: {
                         custscript_search_id: searchId,
                         custscript_folder_id: folderId,
@@ -186,28 +182,30 @@ define(['N/search', 'N/task', 'N/cache'], (search, task, cache) => {
                         custscript_job_id: jobId
                     }
                 });
+              
 
+            log.audit({
+                title:LOG_TITLE.EXPORT_TITLE_3,
+                details: { searchId: searchId, folderId: folderId , scriptId : scriptId, deploymentId: deploymentId }
+            });
                 taskId = scTask.submit();
 
             } catch (submitError) {
 
                 // Translate the platform-level "already running" error into a clean response
-                if (submitError.name === 'SCRIPT_ALREADY_RUNNING' ||
+                if (submitError.name === ERROR_CODES.USER_DEF_ERR ||
                     (submitError.message || '').indexOf('already running') !== -1) {
 
                     log.audit({
-                        title: 'SC Already Running (platform-level)',
+                        title: LOG_TITLE.SCRIPT_TITLE_1,
                         details: { searchId: searchId, jobId: jobId }
                     });
 
                     return JSON.stringify({
                         success: false,
-                        error: 'ALREADY_RUNNING',
-                        message:
-                            'An export is already running for this search. ' +
-                            'Please wait for it to finish before starting a new one. ' +
-                            'Check the Schedule Script Status page in NetSuite ' +
-                            'for progress.'
+                        error: ERROR_CODES.ALREADY_RUNNING,
+                        message: RETURN_MESSAGE.ALREADY_RUNNING_MSSG_1
+
                     });
                 }
 
@@ -215,7 +213,7 @@ define(['N/search', 'N/task', 'N/cache'], (search, task, cache) => {
             }
 
             log.audit({
-                title: 'SC Task Submitted',
+                title: LOG_TITLE.SCRIPT_TITLE_2,
                 details: { jobId: jobId, taskId: taskId, searchId: searchId }
             });
 
@@ -224,12 +222,12 @@ define(['N/search', 'N/task', 'N/cache'], (search, task, cache) => {
                 jobId: jobId,
                 taskId: taskId,
                 searchId: searchId,
-                message: 'Export started. Poll status RESTlet with this jobId.'
+                message: RETURN_MESSAGE.MESSAGE_2
             });
 
         } catch (e) {
 
-            log.error({ title: 'Export Trigger Error', details: e });
+            log.error({ title: LOG_TITLE.ERR_EXPORT_TITLE_1, details: e });
 
             return JSON.stringify({
                 success: false,

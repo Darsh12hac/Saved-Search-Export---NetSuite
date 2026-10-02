@@ -2,13 +2,14 @@
  * @NApiVersion 2.1
  * @NScriptType ScheduledScript
  */
-define(['N/task', 'N/runtime', 'N/cache', 'N/search'],
-(task, runtime, cache, search) => {
+define(['N/task', 'N/runtime', 'N/cache', 'N/search','./Constant'],
+(task, runtime, cache, search,Constant) => {
 
-    const CACHE_NAME = 'CSV_EXPORT_STATUS';
-    const CACHE_TTL_SECONDS = 86400;
-    const MAX_WAIT_MS = 10 * 60 * 1000;   // max wait 10 min
-    const POLL_EVERY_MS = 5000;           // har 5 sec mein ek check
+    const CACHE_NAME = CACHE_DETAIL.CACHE_NAME;
+    const CACHE_TTL_SECONDS = CACHE_DETAIL.CACHE_TTL_SECONDS;
+
+    const MAX_WAIT_MS = TIMINGS.MAX_WAIT_MS;   
+    const POLL_EVERY_MS = TIMINGS.POLL_EVERY_MS;         
 
     const getStatusCache = () => cache.getCache({
         name: CACHE_NAME,
@@ -23,7 +24,7 @@ define(['N/task', 'N/runtime', 'N/cache', 'N/search'],
                 ttl: CACHE_TTL_SECONDS
             });
         } catch (e) {
-            log.error({ title: 'Cache Update Failed', details: e });
+            log.error({ title: LOG_TITLE.MISSING_PARAM_MSSG_3, details: e });
         }
     };
 
@@ -89,9 +90,9 @@ define(['N/task', 'N/runtime', 'N/cache', 'N/search'],
     const execute = () => {
 
         const script = runtime.getCurrentScript();
-        const searchId = script.getParameter({ name: 'custscript_search_id' });
-        const folderId = script.getParameter({ name: 'custscript_folder_id' });
-        const jobId = script.getParameter({ name: 'custscript_job_id' })
+        const searchId = script.getParameter({ name: PARAMETER_ID.SEARCH_ID });
+        const folderId = script.getParameter({ name: PARAMETER_ID.FOLDER_ID });
+        const jobId = script.getParameter({ name: PARAMETER_ID.JOB_ID })
             || Date.now().toString();
 
         let taskId = null;
@@ -99,11 +100,11 @@ define(['N/task', 'N/runtime', 'N/cache', 'N/search'],
 
         try {
 
-            if (!searchId) throw Error('Search Id is required.');
-            if (!folderId) throw Error('Folder Id is required.');
+            if (!searchId) throw Error(RETURN_MESSAGE.ERR_PARAM_MSSG_1);
+            if (!folderId) throw Error(RETURN_MESSAGE.ERR_PARAM_MSSG_2);
 
             setStatus(jobId, {
-                status: 'PROCESSING',
+                status:STATUS.PROCESSING,
                 searchId: searchId,
                 folderId: folderId,
                 startedAt: new Date().toISOString()
@@ -120,12 +121,12 @@ define(['N/task', 'N/runtime', 'N/cache', 'N/search'],
             taskId = exportTask.submit();
 
             log.audit({
-                title: 'Search Export Submitted',
+                title: LOG_TITLE.SEARCH_EXPORT_TITLE,
                 details: { taskId, jobId, searchId, folderId, fileName, folderPath }
             });
 
             setStatus(jobId, {
-                status: 'SUBMITTED',
+                status:STATUS.SUBMITTED,
                 taskId: taskId,
                 searchId: searchId,
                 folderId: folderId,
@@ -140,12 +141,12 @@ define(['N/task', 'N/runtime', 'N/cache', 'N/search'],
             if (result.done && result.failed) {
 
                 setStatus(jobId, {
-                    status: 'FAILED',
+                    status:STATUS.FAILED,
                     taskId: taskId,
                     searchId: searchId,
                     folderId: folderId,
                     fileName: fileName,
-                    message: 'Search export task failed',
+                    message: RETURN_MESSAGE.FAILED_MSSG,
                     failedAt: new Date().toISOString()
                 });
 
@@ -153,7 +154,7 @@ define(['N/task', 'N/runtime', 'N/cache', 'N/search'],
               const finalFileId = result.fileId || findFileIdByName(fileName, folderId);
               
                 setStatus(jobId, {
-                    status: 'COMPLETE',
+                    status: STATUS.COMPLETE,
                     taskId: taskId,
                     searchId: searchId,
                     folderId: folderId,
@@ -166,10 +167,10 @@ define(['N/task', 'N/runtime', 'N/cache', 'N/search'],
 
         } catch (e) {
 
-            log.error({ title: 'Export Failed', details: e });
+            log.error({ title: LOG_TITLE.EXPORT_FAILED_TITLE, details: e });
 
             setStatus(jobId, {
-                status: 'FAILED',
+                status: STATUS.FAILED,
                 taskId: taskId,
                 searchId: searchId,
                 folderId: folderId,

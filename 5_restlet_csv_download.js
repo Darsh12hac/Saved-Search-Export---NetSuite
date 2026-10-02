@@ -2,7 +2,7 @@
  * @NApiVersion 2.1
  * @NScriptType Restlet
  */
-define(['N/file'], (file) => {
+define(['N/file','./Constant'], (file,Constant) => {
 
     const DEFAULT_LINE_COUNT = 5000; // lines per chunk
 
@@ -19,8 +19,8 @@ define(['N/file'], (file) => {
             if (!fileId) {
                 return JSON.stringify({
                     success: false,
-                    error: 'MISSING_PARAM',
-                    message: 'fileId is required'
+                    error: ERROR_CODES.MISSING_PARAM,
+                    message: RETURN_MESSAGE.MISSING_PARAM_MSSG_3
                 });
             }
 
@@ -64,7 +64,7 @@ define(['N/file'], (file) => {
 
         } catch (e) {
 
-            log.error({ title: 'Download Chunk Error', details: e });
+            log.error({ title: LOG_TITLE.ERR_DOWNLOAD_TITLE, details: e });
 
             return JSON.stringify({
                 success: false,

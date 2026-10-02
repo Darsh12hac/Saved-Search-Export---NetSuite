@@ -23,22 +23,26 @@ TOKEN_SECRET = os.environ["NS_TOKEN_SECRET"]
 DEFAULT_SEARCH_ID = os.environ["NS_SEARCH_ID"]
 DEFAULT_FOLDER_ID = int(os.environ["NS_FOLDER_ID"])
 
+DEFAULT_SCRIPT_ID = os.environ["NS_SCRIPT_ID"]
+DEFAULT_SCRIPTDEPLOY_ID = os.environ["NS_SCRIPTDEPLOY_ID"]
 
-BASE_RESTLET_DOMAIN = "https://6403579-sb1.restlets.api.netsuite.com"
-BASE_APP_DOMAIN = "https://6403579-sb1.app.netsuite.com"
+BASE_RESTLET_DOMAIN =os.environ["BASE_RESTLET_DOMAIN"]
+BASE_APP_DOMAIN = os.environ["BASE_APP_DOMAIN"]
 
-# SE | Restlet | Export Data        (script.nl?id=1646)
-# SE | Restlet | Export Status Check (script.nl?id=1647)
-# SE | Restlet | Download File       (script.nl?id=1648)
-TRIGGER_RESTLET_URL = f"{BASE_RESTLET_DOMAIN}/app/site/hosting/restlet.nl?script=1646&deploy=1"
-STATUS_RESTLET_URL = f"{BASE_RESTLET_DOMAIN}/app/site/hosting/restlet.nl?script=1647&deploy=1"
-DOWNLOAD_RESTLET_URL = f"{BASE_RESTLET_DOMAIN}/app/site/hosting/restlet.nl?script=1648&deploy=1"
+# SE | Restlet | Export Data        
+# SE | Restlet | Export Status Check 
+# SE | Restlet | Download File     
+#   
+TRIGGER_RESTLET_URL = f"{BASE_RESTLET_DOMAIN}{os.environ["TRIGGER_RESTLET_URL"]}"
+STATUS_RESTLET_URL = f"{BASE_RESTLET_DOMAIN}{os.environ["STATUS_RESTLET_URL"]}"
+DOWNLOAD_RESTLET_URL = f"{BASE_RESTLET_DOMAIN}{os.environ["DOWNLOAD_RESTLET_URL"]}"
 
-DOWNLOAD_LINE_COUNT = 100000  # lines per chunk
+DOWNLOAD_LINE_COUNT = int(os.environ["DOWNLOAD_LINE_COUNT"])   # lines per chunk
 
-POLL_INTERVAL_SECONDS = 15
-MAX_WAIT_SECONDS = 60*60*3
-OUTPUT_DIR = "./Export CSV"
+POLL_INTERVAL_SECONDS = int(os.environ["POLL_INTERVAL_SECONDS"])
+MAX_WAIT_SECONDS = int(os.environ["MAX_WAIT_SECONDS"])
+
+OUTPUT_DIR = os.environ["OUTPUT_DIR"]
 
 auth = OAuth1(
     client_key=CONSUMER_KEY,
@@ -53,7 +57,10 @@ auth = OAuth1(
 
 def trigger_export(search_id, folder_id, force=False):
 
-    params = {"searchId": search_id}
+    params = {"searchId": search_id,
+              "scriptId": DEFAULT_SCRIPT_ID,
+              "deploymentId": DEFAULT_SCRIPTDEPLOY_ID
+              }
     # if folder_id:
     #     params["folderId"] = folder_id
     params["folderId"] = DEFAULT_FOLDER_ID
@@ -66,6 +73,8 @@ def trigger_export(search_id, folder_id, force=False):
     print("Search ID:", search_id)
     print("=" * 60)
     print("Folder ID:", DEFAULT_FOLDER_ID)
+    print( "Script ID:", DEFAULT_SCRIPT_ID)
+    print( "Deployment Id:", DEFAULT_SCRIPTDEPLOY_ID)
 
     if force:
         print("(force=true - bypassing any in-progress job check)")

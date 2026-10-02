@@ -2,9 +2,9 @@
  * @NApiVersion 2.1
  * @NScriptType Restlet
  */
-define(['N/cache'], (cache) => {
+define(['N/cache','./Constant'], (cache,Constant) => {
 
-    const CACHE_NAME = 'CSV_EXPORT_STATUS';
+    const CACHE_NAME = CACHE_DETAIL.CACHE_NAME;
 
     const get = (request) => {
         return checkStatus(request || {});
@@ -19,8 +19,8 @@ define(['N/cache'], (cache) => {
             if (!jobId) {
                 return JSON.stringify({
                     success: false,
-                    error: 'MISSING_PARAM',
-                    message: 'jobId is required'
+                    error: ERROR_CODES.MISSING_PARAM,
+                    message:RETURN_MESSAGE.MISSING_PARAM_MSSG_2
                 });
             }
 
@@ -32,7 +32,7 @@ define(['N/cache'], (cache) => {
             // loader returns NOT_FOUND instead of throwing if key is missing
             const raw = statusCache.get({
                 key: jobId,
-                loader: () => JSON.stringify({ status: 'NOT_FOUND' })
+                loader: () => JSON.stringify({ status:status.NOT_FOUND })
             });
 
             const status = JSON.parse(raw);
@@ -45,7 +45,7 @@ define(['N/cache'], (cache) => {
 
         } catch (e) {
 
-            log.error({ title: 'Status Check Error', details: e });
+            log.error({ title: LOG_TITLE.ERR_STATUS_TITLE, details: e });
 
             return JSON.stringify({
                 success: false,
